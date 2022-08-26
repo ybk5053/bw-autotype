@@ -1,0 +1,6 @@
+bw
+bw-autofill
+*.pem
+*.json
+*.exe
+*_darwin.go
