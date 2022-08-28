@@ -75,3 +75,7 @@ func getActiveWindowName() string {
 
 	return res
 }
+
+func hideConsole() {
+	log.Println("Windows Only")
+}

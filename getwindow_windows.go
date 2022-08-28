@@ -13,6 +13,10 @@ var (
 	mod                     = windows.NewLazyDLL("user32.dll")
 	procGetWindowText       = mod.NewProc("GetWindowTextW")
 	procGetWindowTextLength = mod.NewProc("GetWindowTextLengthW")
+	//procSetActiveWindow     = mod.NewProc("SetActiveWindow")
+	showWindowAsync  = mod.NewProc("ShowWindowAsync")
+	kernel132        = windows.NewLazyDLL("kernel32.dll")
+	getConsoleWindow = kernel132.NewProc("GetConsoleWindow")
 )
 
 type (
@@ -52,3 +56,15 @@ func getActiveWindowName() string {
 	}
 	return ""
 }
+
+func hideConsole() {
+	h, _, _ := getConsoleWindow.Call()
+	if h == 0 {
+		return
+	}
+	showWindowAsync.Call(h, 0)
+}
+
+// func setActiveWindow(i HWND) {
+// 	procSetActiveWindow.Call(uintptr(i))
+// }

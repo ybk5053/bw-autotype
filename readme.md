@@ -1,1 +1,6 @@
-AutoType for Bitwarden using [Bitwarden CLI](https://bitwarden.com/help/cli/)
+AutoType using [Bitwarden CLI](https://bitwarden.com/help/cli/)
+
+Windows: 
+```
+go build -ldflags -H=windowsgui
+```

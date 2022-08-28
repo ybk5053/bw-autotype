@@ -212,6 +212,9 @@ func get_pass() (string, error) {
 	}
 	if err.Error() == noconferr {
 		_, pass, err := zenity.Password(zenity.Title("BW-Autotype"), zenity.DisallowEmpty())
+		if err != nil {
+			return "", err
+		}
 		epass, err := encrypt(pass)
 		if err != nil {
 			return "", err
@@ -252,7 +255,7 @@ func decrypt(p string) (string, error) {
 		return "", err
 	}
 	if len(cipherText) < aes.BlockSize {
-		err = errors.New("Ciphertext block size is too short!")
+		err = errors.New("ciphertext block size is too short")
 		return "", err
 	}
 	iv := cipherText[:aes.BlockSize]

@@ -28,7 +28,8 @@ func listenHotkey(kb *sendkeys.KBWrap, c context.Context, key hotkey.Key, mods [
 			if !checkbwlogin() {
 				break
 			}
-			items, err := findPass(getActiveWindowName())
+			name := getActiveWindowName()
+			items, err := findPass(name)
 			if err != nil {
 				log.Println(err)
 			} else {
@@ -41,18 +42,16 @@ func listenHotkey(kb *sendkeys.KBWrap, c context.Context, key hotkey.Key, mods [
 					}
 					time.Sleep(500 * time.Millisecond)
 				}
+				//setActiveWindow(hwnd)
 				entry := items[0]
 				for _, v := range pattern {
 					switch v {
 					case "tab":
 						kb.Tab()
-						break
 					case "enter":
 						kb.Enter()
-						break
 					case "space":
 						kb.Type(" ")
-						break
 					default:
 						kb.Type(entry[v])
 					}

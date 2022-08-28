@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,8 +8,11 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+
+	"golang.org/x/exp/slices"
 )
 
+var commonwords = []string{"the", "where", "how", "what", "or", "if", "when", "who", "and", "on"}
 var bw_session string
 
 func bw_login() error {
@@ -111,7 +113,11 @@ func bw_lock() {
 // 	return i
 // }
 
-func bw_search_con(s string, c chan []map[string]interface{}, ctx context.Context) {
+func bw_search_con(s string, c chan []map[string]interface{}) {
+	r := make([]map[string]interface{}, 0)
+	defer func() {
+		c <- r
+	}()
 	b, err := exec.Command(bw, "list", "items", "--search", s, "--session", bw_session).CombinedOutput()
 	if err != nil {
 		log.Println(err)
@@ -124,31 +130,36 @@ func bw_search_con(s string, c chan []map[string]interface{}, ctx context.Contex
 		log.Println(err)
 		return
 	}
-
-	if len(i) > 0 {
-		select {
-		case c <- i:
-			return
-		case <-ctx.Done():
-			return
+	for _, v := range i {
+		if strings.Contains(strings.ToLower(v["name"].(string)), strings.ToLower(s)) {
+			r = append(r, v)
 		}
 	}
 }
 
 func findPass(name string) ([]map[string]string, error) {
-	ctx, cancel := context.WithCancel(context.Background())
 	windows := strings.FieldsFunc(name, splitmods)
-	win := strings.TrimSpace(windows[len(windows)-1])
+	win := strings.ToLower(strings.TrimSpace(windows[len(windows)-1]))
+	findarr := make([]chan []map[string]interface{}, 0)
 	find := make(chan []map[string]interface{})
-	go bw_search_con(win, find, ctx)
-	for i := len(windows) - 1; i >= 0; i-- {
-		windows2 := strings.Split(win, " ")
-		for i := len(windows2) - 1; i >= 0; i-- {
-			go bw_search_con(windows2[i], find, ctx)
+	findarr = append(findarr, find)
+	go bw_search_con(win, find)
+	for i := 0; i < len(windows); i++ {
+		windows2 := strings.Split(windows[i], " ")
+		for j := 0; j < len(windows2); j++ {
+			t := strings.ToLower(windows2[j])
+			if win != t && len(t) > 1 && !slices.Contains(commonwords, t) {
+				find := make(chan []map[string]interface{})
+				findarr = append(findarr, find)
+				go bw_search_con(t, find)
+			}
 		}
 	}
-	items := <-find
-	cancel()
+	items := make([]map[string]interface{}, 0)
+	for _, v := range findarr {
+		i := <-v
+		items = append(items, i...)
+	}
 	if len(items) == 0 {
 		return nil, errors.New("login not found")
 	}

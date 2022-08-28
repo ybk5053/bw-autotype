@@ -11,7 +11,6 @@ import (
 
 var (
 	keycode []byte
-	login   = true
 	cancel  context.CancelFunc
 	kb      *sendkeys.KBWrap
 )
@@ -33,6 +32,7 @@ func main() {
 	defer f.Close()
 	log.SetOutput(f)
 	keycode = initapp()
+	hideConsole()
 	defer bw_lock()
 	systray.Run(onReady, onExit)
 }
