@@ -10,7 +10,6 @@ require (
 	github.com/spf13/viper v1.7.0
 	github.com/zalando/go-keyring v0.2.1
 	golang.design/x/hotkey v0.3.0
-	golang.org/x/exp v0.0.0-20220827204233-334a2380cb91
 	golang.org/x/sys v0.0.0-20220808155132-1c4a2a72c664
 )
 

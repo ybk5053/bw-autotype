@@ -53,15 +53,19 @@ func onReady() {
 	mKey1 := systray.AddMenuItem("Hotkey 1", "Change hotkey 1")
 	mKey2 := systray.AddMenuItem("Hotkey 2", "Change hotkey 2")
 	systray.AddSeparator()
+	mSync := systray.AddMenuItem("Sync", "Sync BW")
 	mLock := systray.AddMenuItem("Lock", "Lock BW")
 	mLogin := systray.AddMenuItem("Login", "Login to BW")
 	mLogout := systray.AddMenuItem("Logout", "Logout of BW")
 	mQuit := systray.AddMenuItem("Quit", "Quit the app")
 	err := bw_login()
+	mSync.Enable()
 	mLock.Enable()
 	mLogin.Disable()
 	mLogout.Enable()
 	if err != nil {
+		log.Println(err)
+		mSync.Disable()
 		mLock.Disable()
 		mLogin.Enable()
 		mLogout.Disable()
@@ -89,8 +93,11 @@ func onReady() {
 				var ctx context.Context
 				ctx, cancel = context.WithCancel(context.Background())
 				registerHotKeys(ctx, kb)
+			case <-mSync.ClickedCh:
+				bw_lock()
 			case <-mLock.ClickedCh:
 				bw_lock()
+				mSync.Enable()
 				mLock.Disable()
 				mLogin.Enable()
 				mLogout.Enable()
@@ -100,11 +107,13 @@ func onReady() {
 					log.Println(err)
 					break
 				}
+				mSync.Enable()
 				mLock.Enable()
 				mLogin.Disable()
 				mLogout.Enable()
 			case <-mLogout.ClickedCh:
 				bw_logout()
+				mSync.Disable()
 				mLock.Disable()
 				mLogin.Enable()
 				mLogout.Disable()

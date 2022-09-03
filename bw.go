@@ -8,12 +8,11 @@ import (
 	"os"
 	"os/exec"
 	"strings"
-
-	"golang.org/x/exp/slices"
 )
 
-var commonwords = []string{"the", "where", "how", "what", "or", "if", "when", "who", "and", "on"}
+// var commonwords = []string{"the", "where", "how", "what", "or", "if", "when", "who", "and", "on"}
 var bw_session string
+var bw_items []map[string]string
 
 func bw_login() error {
 	var cmd *exec.Cmd
@@ -62,6 +61,12 @@ func bw_login() error {
 	}
 
 	bw_session = temp[1]
+
+	err = bw_sync()
+	if err != nil {
+		return err
+	}
+
 	log.Println("Login")
 	return nil
 }
@@ -69,114 +74,50 @@ func bw_login() error {
 func bw_logout() {
 	exec.Command(bw, "logout").Run()
 	bw_session = ""
+	bw_items = make([]map[string]string, 0)
 	log.Println("Logout")
 }
 
 func bw_lock() {
 	exec.Command(bw, "lock").Run()
 	bw_session = ""
+	bw_items = make([]map[string]string, 0)
 	log.Println("Lock")
 }
 
-// func getPass(p, s string) string {
-// 	//p = password or username
-// 	//s = search string
-// 	if bw_session == "" {
-// 		bw_login()
-// 	}
-// 	b, err := exec.Command(bw, "get", p, s, "--session", bw_session).CombinedOutput()
-// 	if err != nil {
-// 		if !strings.Contains(string(b), "password") {
-// 			//log.Println(string(b), err)
-// 			return ""
-// 		}
-// 		bw_login()
-// 		if err != nil {
-// 			log.Fatal(err)
-// 			return ""
-// 		}
-// 	}
-// 	return string(b)
-// }
-
-// func bw_search(s string) []map[string]interface{} {
-// 	b, err := exec.Command(bw, "list", "items", "--search", s, "--session", bw_session).CombinedOutput()
-// 	if err != nil {
-// 		log.Println(err)
-// 	}
-// 	i := make([]map[string]interface{}, 0)
-// 	err = json.Unmarshal(b, &i)
-// 	if err != nil {
-// 		log.Println(err)
-// 	}
-
-// 	return i
-// }
-
-func bw_search_con(s string, c chan []map[string]interface{}) {
-	r := make([]map[string]interface{}, 0)
-	defer func() {
-		c <- r
-	}()
-	b, err := exec.Command(bw, "list", "items", "--search", s, "--session", bw_session).CombinedOutput()
+func bw_search(id string) (map[string]string, error) {
+	b, err := exec.Command(bw, "get", "item", id, "--session", bw_session).CombinedOutput()
 	if err != nil {
 		log.Println(err)
-		return
+		return nil, err
 	}
-	i := make([]map[string]interface{}, 0)
+	i := make(map[string]interface{}, 0)
 	err = json.Unmarshal(b, &i)
 	if err != nil {
-		log.Println(string(b))
 		log.Println(err)
-		return
+		return nil, err
 	}
-	for _, v := range i {
-		if strings.Contains(strings.ToLower(v["name"].(string)), strings.ToLower(s)) {
-			r = append(r, v)
-		}
-	}
+
+	name := i["name"].(string)
+	item := i["login"].(map[string]interface{})
+	user := item["username"].(string)
+	pass := item["password"].(string)
+	m := map[string]string{"name": name, "username": user, "password": pass}
+
+	return m, nil
 }
 
 func findPass(name string) ([]map[string]string, error) {
-	windows := strings.FieldsFunc(name, splitmods)
-	win := strings.ToLower(strings.TrimSpace(windows[len(windows)-1]))
-	findarr := make([]chan []map[string]interface{}, 0)
-	find := make(chan []map[string]interface{})
-	findarr = append(findarr, find)
-	go bw_search_con(win, find)
-	for i := 0; i < len(windows); i++ {
-		windows2 := strings.Split(windows[i], " ")
-		for j := 0; j < len(windows2); j++ {
-			t := strings.ToLower(windows2[j])
-			if win != t && len(t) > 1 && !slices.Contains(commonwords, t) {
-				find := make(chan []map[string]interface{})
-				findarr = append(findarr, find)
-				go bw_search_con(t, find)
-			}
+	res := make([]map[string]string, 0)
+	for _, v := range bw_items {
+		if strings.Contains(strings.ToLower(name), strings.ToLower(v["name"])) {
+			res = append(res, v)
 		}
 	}
-	items := make([]map[string]interface{}, 0)
-	for _, v := range findarr {
-		i := <-v
-		items = append(items, i...)
-	}
-	if len(items) == 0 {
+	if len(res) == 0 {
 		return nil, errors.New("login not found")
 	}
-	r := make([]map[string]string, 0)
-	for _, item := range items {
-		name := item["name"].(string)
-		item = item["login"].(map[string]interface{})
-		user := item["username"].(string)
-		pass := item["password"].(string)
-		m := map[string]string{"name": name, "username": user, "password": pass}
-		r = append(r, m)
-	}
-	return r, nil
-}
-
-func splitmods(r rune) bool {
-	return r == '-' || r == '—'
+	return res, nil
 }
 
 func checkbwlogin() bool {
@@ -189,4 +130,49 @@ func checkbwlogin() bool {
 		return false
 	}
 	return true
+}
+
+func bw_sync() error {
+	_, err := exec.Command(bw, "sync", "--session", bw_session).CombinedOutput()
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
+	b, err := exec.Command(bw, "list", "items", "--session", bw_session).CombinedOutput()
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	i := make([]map[string]interface{}, 0)
+	err = json.Unmarshal(b, &i)
+	if err != nil {
+		log.Println(string(b))
+		log.Println(err)
+		return err
+	}
+	bw_items = make([]map[string]string, 0)
+	log.Println(len(i))
+	for _, v := range i {
+		id, ok := v["id"].(string)
+		if !ok {
+			continue
+		}
+		name, ok := v["name"].(string)
+		if !ok {
+			name = ""
+		}
+		item, ok := v["login"].(map[string]interface{})
+		if !ok {
+			continue
+		}
+		user, ok := item["username"].(string)
+		if !ok {
+			user = ""
+		}
+		m := map[string]string{"id": id, "name": name, "user": user}
+		bw_items = append(bw_items, m)
+	}
+
+	return nil
 }

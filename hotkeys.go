@@ -32,6 +32,7 @@ func listenHotkey(kb *sendkeys.KBWrap, c context.Context, key hotkey.Key, mods [
 			items, err := findPass(name)
 			if err != nil {
 				log.Println(err)
+				zenity.Info(err.Error(), zenity.Title("BW-Autotype"))
 			} else {
 				if len(items) > 1 {
 					items, err = selectitem(items)
@@ -43,7 +44,12 @@ func listenHotkey(kb *sendkeys.KBWrap, c context.Context, key hotkey.Key, mods [
 					time.Sleep(500 * time.Millisecond)
 				}
 				//setActiveWindow(hwnd)
-				entry := items[0]
+				entry, err := bw_search(items[0]["id"])
+				if err != nil {
+					log.Println(err)
+					zenity.Info(err.Error(), zenity.Title("BW-Autotype"))
+					break
+				}
 				for _, v := range pattern {
 					switch v {
 					case "tab":
