@@ -39,6 +39,8 @@ func bw_login() error {
 				return err
 			}
 			cmd.Env = append(os.Environ(), fmt.Sprintf("NODE_EXTRA_CA_CERTS=%s", path))
+		} else {
+			writeconf(sslconf, "")
 		}
 	}
 
@@ -133,9 +135,17 @@ func checkbwlogin() bool {
 }
 
 func bw_sync() error {
-	_, err := exec.Command(bw, "sync", "--session", bw_session).CombinedOutput()
+	cmd := exec.Command(bw, "sync", "--session", bw_session)
+	path, err := get_sslpath()
 	if err != nil {
-		log.Println(err)
+		return err
+	}
+	if path != "" {
+		cmd.Env = append(os.Environ(), fmt.Sprintf("NODE_EXTRA_CA_CERTS=%s", path))
+	}
+	r, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Println(err, string(r))
 		return err
 	}
 

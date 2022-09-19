@@ -68,7 +68,7 @@ func onReady() {
 		mSync.Disable()
 		mLock.Disable()
 		mLogin.Enable()
-		mLogout.Disable()
+		mLogout.Enable()
 	}
 	go func() {
 		for {
@@ -116,7 +116,7 @@ func onReady() {
 				mSync.Disable()
 				mLock.Disable()
 				mLogin.Enable()
-				mLogout.Disable()
+				mLogout.Enable()
 				err := rmvconf()
 				if err != nil {
 					log.Println(err)
